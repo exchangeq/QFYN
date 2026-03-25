@@ -343,7 +343,7 @@ winget uninstall --id <工具ID>
 📜 许可证与免责声明
 
 
-Copyright (c) 2025 QFYN @~ Security Research
+Copyright (c) 2026 QFYN @~ Security Research
 
 本工具仅供授权安全测试使用。使用者须自行承担一切法律后果。
 作者不对任何滥用行为负责。使用本工具即表示您同意：
