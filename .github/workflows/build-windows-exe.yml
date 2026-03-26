@@ -1,0 +1,126 @@
+name: QFYN Security Tools - Build & Sign EXE
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  TIMESTAMP_SERVER: http://timestamp.digicert.com
+  TIMESTAMP_SERVER_ALT: http://timestamp.sectigo.com
+
+jobs:
+  build-and-sign:
+    name: Build & Sign EXE
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install ps2exe Module
+        shell: pwsh
+        run: |
+          Write-Host "Installing ps2exe module..." -ForegroundColor Cyan
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+          Install-Module ps2exe -Scope CurrentUser -Force -Verbose
+
+      - name: Get Version Info
+        id: version
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF -match 'refs/tags/v(.+)') { $matches[1] } else { "3.0.0" }
+          Write-Host "Building version: $version" -ForegroundColor Green
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build EXE (Unsigned)
+        shell: pwsh
+        run: |
+          $outDir = Join-Path $PWD "dist"
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+          
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $inputFile = Join-Path $PWD "SecurityTools_Installer.ps1"
+          $outputFile = Join-Path $outDir "QFYN_Security_Tools_Installer.exe"
+          
+          Write-Host "Building EXE..." -ForegroundColor Cyan
+          
+          Invoke-PS2EXE -InputFile $inputFile `
+            -OutputFile $outputFile `
+            -Title "QFYN Security Tools Installer v$version" `
+            -Description "一键安装120+网络安全工具 | QFYN @~ 安全研究版" `
+            -Company "QFYN Security Research" `
+            -Copyright "© 2025-2026 QFYN @~ | 仅限授权测试使用" `
+            -Version $version `
+            -Verbose
+          
+          Write-Host "EXE created at: $outputFile" -ForegroundColor Green
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QFYN_Security_Tools_Installer
+          path: dist/QFYN_Security_Tools_Installer.exe
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: build-and-sign
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: QFYN_Security_Tools_Installer
+          path: dist
+
+      - name: Get Version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "QFYN Security Tools v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## 🔐 QFYN Security Tools v${{ steps.version.outputs.VERSION }}
+            
+            ### ✨ 更新内容
+            - 一键安装 120+ 网络安全工具
+            - 支持 winget + 手动下载双模式
+            - 彩色进度条显示
+            - 自动配置系统PATH环境变量
+            
+            ### 📦 安装说明
+            1. 下载 `QFYN_Security_Tools_Installer.exe`
+            2. **以管理员身份运行**
+            3. 输入 `I ACCEPT` 接受法律条款
+            4. 等待安装完成（约15-20分钟）
+            
+            ### ⚠️ 法律警告
+            > 本工具仅用于授权的网络安全测试、教育及研究。
+            > 未经授权使用可能违反《网络安全法》，使用者须自行承担一切法律后果。
+            
+            ### 🔗 相关链接
+            - [完整工具清单](https://github.com/exchangeq/QFYN/blob/main/Tool_List.md)
+            - [问题反馈](https://github.com/exchangeq/QFYN/issues)
+          draft: false
+          prerelease: false
+          files: |
+            dist/QFYN_Security_Tools_Installer.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
