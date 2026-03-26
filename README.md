@@ -334,11 +334,7 @@ winget uninstall --id <工具ID>
 
 📞 技术支持
 
-· 📧 问题反馈：security-tools@qfyn.com
-· 📚 官方文档：https://github.com/QFYN/SecurityTools
-· ⚠️ 紧急情况：请立即停止使用并联系网络安全部门
-📖 **完整工具清单**：[查看 Tool_List.md](Tool_List.md)
----
+· 📧 问题反馈：3314015485@qq.com
 
 📜 许可证与免责声明
 
